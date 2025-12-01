@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Highspot AI Value Creation Calculator</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        /* General Styles */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f7f9fc;
+        }
+        .roi-calculator {
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 30px;
+            border: 1px solid #e0e6f0;
+            border-radius: 12px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.05);
+            background: #ffffff;
+        }
+
+        /* Header and Description */
+        h2 { 
+            color: #007bff; 
+            border-bottom: 3px solid #007bff; 
+            padding-bottom: 10px; 
+            margin-top: 0;
+            font-size: 1.8em;
+            text-align: center;
+        }
+        .description { 
+            margin-bottom: 30px; 
+            color: #555; 
+            font-style: italic; 
+            text-align: center;
+        }
+        hr {
+            border: 0;
+            border-top: 1px solid #eee;
+            margin: 30px 0;
+        }
+
+        /* Slider Input Styles */
+        .slider-input-group {
+            margin-bottom: 25px;
+            padding: 10px 0;
+            border-bottom: 1px dashed #e0e0e0;
+        }
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #333;
+        }
+        .slider-label span:last-child {
+            color: #007bff;
+            font-size: 1.1em;
+        }
+        .slider {
+            width: 100%;
+            height: 10px;
+            background: #e9ecef;
+            border-radius: 5px;
+            -webkit-appearance: none;
+            appearance: none;
+            cursor: pointer;
+            margin-top: 5px;
+            outline: none;
+        }
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #007bff;
+            border: 3px solid #ffffff;
+            border-radius: 50%;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+        }
+        .slider-min-max {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85em;
+            color: #999;
+            margin-top: 5px;
+        }
+
+        /* Results Section */
+        .results { 
+            text-align: center; 
+            padding: 30px 20px; 
+            background: #f0f8ff; 
+            border: 1px solid #007bff;
+            border-radius: 8px; 
+        }
+        h3 {
+            color: #007bff;
+            margin-bottom: 10px;
+            font-size: 1.4em;
+        }
+        .summary-table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+        .summary-table td {
+            padding: 10px 0;
+            font-size: 1.1em;
+            text-align: left;
+            border-bottom: 1px dashed #e0e6f0;
+        }
+        .summary-table td:last-child {
+            text-align: right;
+            font-weight: 600;
+        }
+        .net-roi-row td {
+            font-size: 1.4em !important;
+            font-weight: 700 !important;
+            padding: 15px 0 !important;
+            border-bottom: none;
+        }
+        .net-roi-row td:first-child {
+            color: #007bff;
+        }
+        .net-roi-row td:last-child {
+            color: #28a745; /* Green for profit/positive ROI */
+        }
+        .breakdown { 
+            font-size: 0.95em; 
+            color: #666; 
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo } = React;
+        
+        // --- Constants ---
+        const WORKING_WEEKS_PER_YEAR = 50;
+
+        // --- Helper Functions ---
+        const formatCurrency = (amount) => {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
+            }).format(amount);
+        };
+
+        const formatPercentage = (amount) => `${amount}%`;
+        
+        // --- Reusable Slider Component ---
+        const SliderInput = ({ label, value, onChange, min, max, step, unit }) => {
+            const handleChange = (event) => {
+                onChange(Number(event.target.value));
+            };
+
+            const isCurrency = unit.startsWith('$');
+            const isPercent = unit === '%';
+
+            let displayValue;
+            if (isCurrency) {
+                displayValue = formatCurrency(value);
+            } else if (isPercent) {
+                displayValue = formatPercentage(value);
+            } else {
+                displayValue = `${value} ${unit}`.trim();
+            }
+
+            return (
+                <div className="slider-input-group">
+                    <label className="slider-label">
+                        <span>{label}</span>
+                        <span>{displayValue}</span>
+                    </label>
+                    <input
+                        type="range"
+                        min={min}
+                        max={max}
+                        step={step}
+                        value={value}
+                        onChange={handleChange}
+                        className="slider"
+                    />
+                    <div className="slider-min-max">
+                        <span>{isCurrency ? formatCurrency(min) : (isPercent ? formatPercentage(min) : `${min} ${unit}`.trim())}</span>
+                        <span>{isCurrency ? formatCurrency(max) : (isPercent ? formatPercentage(max) : `${max} ${unit}`.trim())}</span>
+                    </div>
+                </div>
+            );
+        };
+
+
+        // --- Main ROI Calculator Component ---
+        const ROICalculator = () => {
+            // 1. Productivity Inputs (Time Reallocation)
+            const [employeeCount, setEmployeeCount] = useState(100);
+            const [hoursSavedPerWeek, setHoursSavedPerWeek] = useState(5);
+            
+            // 2. Value Creation Inputs (Revenue Metrics)
+            const [extraLeadsPerSavedHour, setExtraLeadsPerSavedHour] = useState(0.05); // e.g., 0.05 leads per hour (1 lead for every 20 hours saved)
+            const [closeRateOnExtraLeads, setCloseRateOnExtraLeads] = useState(10); // Percentage
+            const [avgDealValue, setAvgDealValue] = useState(25000); // Currency
+
+            // 3. Cost Input
+            const [annualSolutionCost, setAnnualSolutionCost] = useState(50000); 
+
+            // --- Core Calculation ---
+            
+            // Step A: Calculate Total Annual Saved Hours
+            const totalAnnualSavedHours = useMemo(() => {
+                return employeeCount * hoursSavedPerWeek * WORKING_WEEKS_PER_YEAR;
+            }, [employeeCount, hoursSavedPerWeek]);
+
+            // Step B: Calculate Total Incremental Leads
+            const totalIncrementalLeads = useMemo(() => {
+                return totalAnnualSavedHours * extraLeadsPerSavedHour;
+            }, [totalAnnualSavedHours, extraLeadsPerSavedHour]);
+
+            // Step C: Calculate Incremental Revenue (Value Creation)
+            const incrementalRevenue = useMemo(() => {
+                const extraDeals = totalIncrementalLeads * (closeRateOnExtraLeads / 100);
+                return extraDeals * avgDealValue;
+            }, [totalIncrementalLeads, closeRateOnExtraLeads, avgDealValue]);
+
+            // Step D: Calculate Net Annual ROI
+            const netAnnualROI = incrementalRevenue - annualSolutionCost;
+
+            // --- Render ---
+            return (
+                <div className="roi-calculator">
+                    <h2>💰 Highspot AI Value Creation Calculator</h2>
+                    <p className="description">
+                        Quantify the **Incremental Revenue** generated by reallocating seller time from low-value administrative tasks to high-value selling activities.
+                    </p>
+
+                    <div className="sliders-container">
+                        <h3>1. Productivity (Time Reallocation)</h3>
+                        <SliderInput
+                            label="Sales Employee Count"
+                            value={employeeCount}
+                            onChange={setEmployeeCount}
+                            min={20} max={500} step={10} unit=""
+                        />
+                        <SliderInput
+                            label="Hours per Employee Saved per Week (Low-Value Work Avoided)"
+                            value={hoursSavedPerWeek}
+                            onChange={setHoursSavedPerWeek}
+                            min={0.5} max={10} step={0.5} unit="hrs"
+                        />
+                        
+                        <hr />
+
+                        <h3>2. Value Creation (Revenue Metrics)</h3>
+                        <SliderInput
+                            label="Average Deal Value"
+                            value={avgDealValue}
+                            onChange={setAvgDealValue}
+                            min={5000} max={250000} step={5000} unit="$"
+                        />
+                         <SliderInput
+                            label="Extra Leads Generated per Saved Hour"
+                            value={extraLeadsPerSavedHour}
+                            onChange={setExtraLeadsPerSavedHour}
+                            min={0.01} max={0.25} step={0.01} unit="leads"
+                        />
+                        <SliderInput
+                            label="Close Rate on Incremental Leads"
+                            value={closeRateOnExtraLeads}
+                            onChange={setCloseRateOnExtraLeads}
+                            min={1} max={30} step={1} unit="%"
+                        />
+
+                        <hr />
+
+                        <h3>3. Cost Input</h3>
+                        <SliderInput
+                            label="Annual Cost of AI Solution"
+                            value={annualSolutionCost}
+                            onChange={setAnnualSolutionCost}
+                            min={10000} max={250000} step={10000} unit="$"
+                        />
+                    </div>
+
+                    <hr />
+
+                    {/* Results Section */}
+                    <div className="results">
+                        <h3>📈 Net Annual Incremental Revenue</h3>
+                        
+                        <table className="summary-table">
+                            <tbody>
+                                <tr>
+                                    <td>Total Annual Reallocated Hours</td>
+                                    <td>{totalAnnualSavedHours.toLocaleString()} hours</td>
+                                </tr>
+                                <tr>
+                                    <td>Total New Leads Generated</td>
+                                    <td>{totalIncrementalLeads.toLocaleString(undefined, { maximumFractionDigits: 0 })} leads</td>
+                                </tr>
+                                <tr>
+                                    <td>Gross Incremental Revenue (Value Created)</td>
+                                    <td>{formatCurrency(incrementalRevenue)}</td>
+                                </tr>
+                                <tr>
+                                    <td>Annual AI Solution Cost</td>
+                                    <td>-{formatCurrency(annualSolutionCost)}</td>
+                                </tr>
+                                <tr className="net-roi-row">
+                                    <td>Net Annual ROI (Incremental Profit)</td>
+                                    <td style={{color: netAnnualROI >= 0 ? '#28a745' : '#dc3545'}}>
+                                        {formatCurrency(netAnnualROI)}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        
+                        <p className="breakdown">
+                            By reallocating **{totalAnnualSavedHours.toLocaleString()}** hours to high-value selling, your team generates **{formatCurrency(incrementalRevenue)}** in new revenue, resulting in a **Net Annual ROI** of **{formatCurrency(netAnnualROI)}**.
+                        </p>
+                    </div>
+                </div>
+            );
+        };
+
+        // Mount the Application to the DOM
+        const container = document.getElementById('root');
+        const root = ReactDOM.createRoot(container);
+        root.render(<ROICalculator />);
+    </script>
+</body>
+</html>
