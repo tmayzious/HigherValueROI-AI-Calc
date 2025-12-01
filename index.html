@@ -132,7 +132,7 @@
             color: #007bff;
         }
         .net-roi-row td:last-child {
-            color: #28a745; /* Green for profit/positive ROI */
+            color: #28a745; 
         }
         .breakdown { 
             font-size: 0.95em; 
@@ -171,14 +171,17 @@
 
             const isCurrency = unit.startsWith('$');
             const isPercent = unit === '%';
+            const isHours = unit === 'hrs';
 
             let displayValue;
             if (isCurrency) {
                 displayValue = formatCurrency(value);
             } else if (isPercent) {
                 displayValue = formatPercentage(value);
+            } else if (isHours) {
+                displayValue = `${value} ${unit}`;
             } else {
-                displayValue = `${value} ${unit}`.trim();
+                displayValue = `${value}`.trim();
             }
 
             return (
@@ -197,8 +200,8 @@
                         className="slider"
                     />
                     <div className="slider-min-max">
-                        <span>{isCurrency ? formatCurrency(min) : (isPercent ? formatPercentage(min) : `${min} ${unit}`.trim())}</span>
-                        <span>{isCurrency ? formatCurrency(max) : (isPercent ? formatPercentage(max) : `${max} ${unit}`.trim())}</span>
+                        <span>{isCurrency ? formatCurrency(min) : (isPercent ? formatPercentage(min) : `${min}`.trim())}</span>
+                        <span>{isCurrency ? formatCurrency(max) : (isPercent ? formatPercentage(max) : `${max}`.trim())}</span>
                     </div>
                 </div>
             );
@@ -212,7 +215,9 @@
             const [hoursSavedPerWeek, setHoursSavedPerWeek] = useState(5);
             
             // 2. Value Creation Inputs (Revenue Metrics)
-            const [extraLeadsPerSavedHour, setExtraLeadsPerSavedHour] = useState(0.05); // e.g., 0.05 leads per hour (1 lead for every 20 hours saved)
+            // *** UPDATED SLIDER ***
+            const [hoursNeededPerExtraLead, setHoursNeededPerExtraLead] = useState(20); 
+            // **********************
             const [closeRateOnExtraLeads, setCloseRateOnExtraLeads] = useState(10); // Percentage
             const [avgDealValue, setAvgDealValue] = useState(25000); // Currency
 
@@ -226,10 +231,11 @@
                 return employeeCount * hoursSavedPerWeek * WORKING_WEEKS_PER_YEAR;
             }, [employeeCount, hoursSavedPerWeek]);
 
-            // Step B: Calculate Total Incremental Leads
+            // Step B: Calculate Total Incremental Leads (NEW FORMULA)
             const totalIncrementalLeads = useMemo(() => {
-                return totalAnnualSavedHours * extraLeadsPerSavedHour;
-            }, [totalAnnualSavedHours, extraLeadsPerSavedHour]);
+                // Calculation: Total Hours / Hours per Lead
+                return totalAnnualSavedHours / hoursNeededPerExtraLead;
+            }, [totalAnnualSavedHours, hoursNeededPerExtraLead]);
 
             // Step C: Calculate Incremental Revenue (Value Creation)
             const incrementalRevenue = useMemo(() => {
@@ -273,10 +279,10 @@
                             min={5000} max={250000} step={5000} unit="$"
                         />
                          <SliderInput
-                            label="Extra Leads Generated per Saved Hour"
-                            value={extraLeadsPerSavedHour}
-                            onChange={setExtraLeadsPerSavedHour}
-                            min={0.01} max={0.25} step={0.01} unit="leads"
+                            label="Hours of Reallocated Time Needed per Extra Lead"
+                            value={hoursNeededPerExtraLead}
+                            onChange={setHoursNeededPerExtraLead}
+                            min={5} max={50} step={1} unit="hrs"
                         />
                         <SliderInput
                             label="Close Rate on Incremental Leads"
